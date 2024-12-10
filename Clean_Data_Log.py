@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import json
 import re
 from langdetect import detect, DetectorFactory
 from langdetect.lang_detect_exception import LangDetectException
@@ -9,7 +10,6 @@ from datetime import datetime
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import os
-import json
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -24,20 +24,26 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-# Load credentials from the JSON file
-creds_dict = json.loads(os.getenv('GOOGLE_CREDENTIALS'))
+# Load credentials from environment variables
+google_credentials_json = os.getenv('GOOGLE_CREDENTIALS')
+creds_dict = json.loads(google_credentials_json)
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 drive_service = build('drive', 'v3', credentials=creds)
 
+# Variables for Google Sheets and Drive
+url_data = os.getenv('Url_Data')
+url_data_clean = os.getenv('Url_DataClean')
+folder_id = os.getenv('var_FolderID')
+
 # Your original script logic encapsulated in a function
 def process_data():
     # Load data from the input Google Sheets
-    sheet_input = client.open_by_url(Url_Data)
+    sheet_input = client.open_by_url(url_data)
     worksheet1 = sheet_input.get_worksheet(0)
 
     # Load the output sheet
-    sheet_output = client.open_by_url(Url_DataClean)
+    sheet_output = client.open_by_url(url_data_clean)
     worksheet2 = sheet_output.get_worksheet(0)
 
     # Get existing data from the output sheet
@@ -148,7 +154,6 @@ def process_data():
     data.to_csv(csv_path, index=False)
 
     # Upload the CSV file to Google Drive
-    folder_id = var_FolderID
     file_metadata = {'name': f"{timestamp}.csv", 'parents': [folder_id]}
     media = MediaFileUpload(csv_path, mimetype='text/csv')
     file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
