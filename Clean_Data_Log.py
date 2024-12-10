@@ -7,6 +7,7 @@ import re
 from langdetect import detect, DetectorFactory
 from langdetect.lang_detect_exception import LangDetectException
 from datetime import datetime
+import pytz  # Para configurar la zona horaria
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import os
@@ -38,6 +39,10 @@ folder_id = os.getenv('var_FolderID')
 
 # Your original script logic encapsulated in a function
 def process_data():
+    # Configure timezone
+    local_tz = pytz.timezone('America/Lima')  # Cambia a tu zona horaria
+    timestamp = datetime.now(local_tz).strftime("%Y%m%d%H%M%S")  # Incluye segundos
+
     # Load data from the input Google Sheets
     sheet_input = client.open_by_url(url_data)
     worksheet1 = sheet_input.get_worksheet(0)
@@ -96,7 +101,6 @@ def process_data():
     data.insert(0, 'Nro', range(last_id + 1, last_id + 1 + len(data)))
 
     # Add 'log' column with a unique identifier
-    timestamp = datetime.now().strftime("%Y%m%d%H%M")
     data['log'] = data['Nro'].apply(lambda x: f"{timestamp}-{x}")
 
     # Cleaning and validation as in previous steps
@@ -154,21 +158,4 @@ def process_data():
     data.to_csv(csv_path, index=False)
 
     # Upload the CSV file to Google Drive
-    file_metadata = {'name': f"{timestamp}.csv", 'parents': [folder_id]}
-    media = MediaFileUpload(csv_path, mimetype='text/csv')
-    file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-
-    return f"File uploaded to Google Drive with ID: {file.get('id')}"
-
-# Flask route to trigger the script with a POST request
-@app.route('/process', methods=['POST'])
-def process_route():
-    try:
-        result = process_data()
-        return jsonify({'message': result}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-# Start the Flask app
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    file_metadata = {'name
