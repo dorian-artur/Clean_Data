@@ -158,4 +158,22 @@ def process_data():
     data.to_csv(csv_path, index=False)
 
     # Upload the CSV file to Google Drive
-    file_metadata = {'name
+    file_metadata = {'name': f"cleaned_data_{timestamp}.csv", 'parents': [folder_id]}
+    media = MediaFileUpload(csv_path, mimetype='text/csv')
+    file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+
+    return f"File uploaded to Google Drive with ID: {file.get('id')}"
+
+    # Flask route to trigger the script with a POST request
+    @app.route('/process', methods=['POST'])
+    def process_route():
+        try:
+            result = process_data()
+            return jsonify({'message': result}), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    # Start the Flask app
+    if __name__ == '__main__':
+        app.run(debug=True, port=5000)
+
