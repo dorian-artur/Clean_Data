@@ -1,3 +1,4 @@
+from flask import Flask, request, jsonify
 import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -7,146 +8,160 @@ from langdetect.lang_detect_exception import LangDetectException
 from datetime import datetime
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+import os
 
-# Configurer la graine pour des résultats cohérents avec langdetect
+# Initialize Flask app
+app = Flask(__name__)
+
+# Configure seed for consistent results with langdetect
 DetectorFactory.seed = 0
 
-# Configurer l'authentification avec Google Sheets et Drive
+# Configure authentication with Google Sheets and Drive
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
 
-# Charger les informations d'identification depuis le fichier JSON
+# Load credentials from the JSON file
 creds = ServiceAccountCredentials.from_json_keyfile_name('awesome-height-441419-j4-5f2808cabaf5.json', scope)
 client = gspread.authorize(creds)
 drive_service = build('drive', 'v3', credentials=creds)
 
-# Charger les données depuis la feuille Google Sheets d'entrée
-sheet_input = client.open_by_url("https://docs.google.com/spreadsheets/d/1eZs3-64SL92NrcmViDehMDTn8fIJTdCZqvsshQT1nek/edit?usp=sharing")
-worksheet1 = sheet_input.get_worksheet(0)
+# Your original script logic encapsulated in a function
+def process_data():
+    # Load data from the input Google Sheets
+    sheet_input = client.open_by_url("https://docs.google.com/spreadsheets/d/1eZs3-64SL92NrcmViDehMDTn8fIJTdCZqvsshQT1nek/edit?usp=sharing")
+    worksheet1 = sheet_input.get_worksheet(0)
 
-# Charger la feuille de sortie
-sheet_output = client.open_by_url("https://docs.google.com/spreadsheets/d/1xRISBywX7X-tK3HSWeDlup-_VcFXc0dGwyarXvfMwCM/edit?usp=sharing")
-worksheet2 = sheet_output.get_worksheet(0)
+    # Load the output sheet
+    sheet_output = client.open_by_url("https://docs.google.com/spreadsheets/d/1xRISBywX7X-tK3HSWeDlup-_VcFXc0dGwyarXvfMwCM/edit?usp=sharing")
+    worksheet2 = sheet_output.get_worksheet(0)
 
-# Obtenir les données existantes dans la feuille de sortie
-existing_data = worksheet2.get_all_records()
+    # Get existing data from the output sheet
+    existing_data = worksheet2.get_all_records()
 
-# Déterminer le prochain numéro 'Nro'
-if existing_data:
-    last_id = max(row['Nro'] for row in existing_data if 'Nro' in row and str(row['Nro']).isdigit())
-else:
-    last_id = 0  # Si la feuille est vide, commencer à 0
+    # Determine the next 'Nro' number
+    if existing_data:
+        last_id = max(row['Nro'] for row in existing_data if 'Nro' in row and str(row['Nro']).isdigit())
+    else:
+        last_id = 0  # If the sheet is empty, start at 0
 
-# Lire la ligne d'en-tête de la feuille Google Sheets d'entrée
-headers = worksheet1.row_values(1)  # Lire la première ligne (en-têtes)
+    # Read the header row from the input Google Sheets
+    headers = worksheet1.row_values(1)
 
-# Fonction pour rendre les en-têtes uniques s'ils sont dupliqués
-def make_headers_unique(headers):
-    seen = {}
-    unique_headers = []
-    for header in headers:
-        if header in seen:
-            seen[header] += 1
-            unique_headers.append(f"{header}_{seen[header]}")
-        else:
-            seen[header] = 0
-            unique_headers.append(header)
-    return unique_headers
+    # Function to make headers unique if they are duplicated
+    def make_headers_unique(headers):
+        seen = {}
+        unique_headers = []
+        for header in headers:
+            if header in seen:
+                seen[header] += 1
+                unique_headers.append(f"{header}_{seen[header]}")
+            else:
+                seen[header] = 0
+                unique_headers.append(header)
+        return unique_headers
 
-# Rendre les en-têtes uniques
-unique_headers = make_headers_unique(headers)
+    # Make headers unique
+    unique_headers = make_headers_unique(headers)
 
-# Lire les données de la feuille en excluant la ligne d'en-tête
-rows = worksheet1.get_all_values()[1:]  # Exclure la première ligne (en-tête)
+    # Read the data from the sheet excluding the header row
+    rows = worksheet1.get_all_values()[1:]
 
-# Créer un DataFrame avec des en-têtes uniques
-data = pd.DataFrame(rows, columns=unique_headers)
+    # Create a DataFrame with unique headers
+    data = pd.DataFrame(rows, columns=unique_headers)
 
-# Sélectionner uniquement les colonnes nécessaires pour le traitement
-required_columns = [
-    "FirstName", "Last Name", "Full Name", "Profile Url", "Headline", "Email",
-    "Location", "Company", "Job Title", "Description", "Phone Number From Drop Contact"
-]
-filtered_columns = [col for col in required_columns if col in data.columns]
-data = data[filtered_columns]
+    # Select only the necessary columns for processing
+    required_columns = [
+        "FirstName", "Last Name", "Full Name", "Profile Url", "Headline", "Email",
+        "Location", "Company", "Job Title", "Description", "Phone Number From Drop Contact"
+    ]
+    filtered_columns = [col for col in required_columns if col in data.columns]
+    data = data[filtered_columns]
 
-# Filtrer les lignes qui ont un prénom et un nom non vides
-data = data[(data['FirstName'].notna()) & (data['FirstName'] != "") &
-            (data['Last Name'].notna()) & (data['Last Name'] != "")]
+    # Filter rows with non-empty first and last names
+    data = data[(data['FirstName'].notna()) & (data['FirstName'] != "") &
+                (data['Last Name'].notna()) & (data['Last Name'] != "")]
 
-# Ajouter la colonne 'Nro' au début du DataFrame avec une numérotation continue
-data.insert(0, 'Nro', range(last_id + 1, last_id + 1 + len(data)))
+    # Add 'Nro' column at the beginning with continuous numbering
+    data.insert(0, 'Nro', range(last_id + 1, last_id + 1 + len(data)))
 
-# Ajouter la colonne 'log' avec un identifiant unique
-timestamp = datetime.now().strftime("%Y%m%d%H%M")
-data['log'] = data['Nro'].apply(lambda x: f"{timestamp}-{x}")
+    # Add 'log' column with a unique identifier
+    timestamp = datetime.now().strftime("%Y%m%d%H%M")
+    data['log'] = data['Nro'].apply(lambda x: f"{timestamp}-{x}")
 
-# Nettoyage et validation comme dans les étapes précédentes
-replacement_dict = {
-    "Ã¡": "á", "Ã©": "é", "Ã­": "í", "Ã³": "ó", "Ãº": "ú",
-    "Ã±": "ñ", "Ã": "Ñ", "â": "'", "â": "-", "Ã¼": "ü",
-    "â€œ": "\"", "â€": "\"", "â€˜": "'", "â€¢": "-", "â‚¬": "€",
-    "â„¢": "™", "âˆ’": "-", "Â": ""
-}
+    # Cleaning and validation as in previous steps
+    replacement_dict = {
+        "Ã¡": "á", "Ã©": "é", "Ã­": "í", "Ã³": "ó", "Ãº": "ú",
+        "Ã±": "ñ", "Ã": "Ñ", "â": "'", "â": "-", "Ã¼": "ü",
+        "â€œ": "\"", "â€": "\"", "â€˜": "'", "â€¢": "-", "â‚¬": "€",
+        "â„¢": "™", "âˆ’": "-", "Â": ""
+    }
 
-def clean_text(text):
-    if pd.isna(text):
-        return ""
-    for bad, good in replacement_dict.items():
-        text = text.replace(bad, good)
-    return re.sub(r'[^\w\s@.-]', '', text).strip()
+    def clean_text(text):
+        if pd.isna(text):
+            return ""
+        for bad, good in replacement_dict.items():
+            text = text.replace(bad, good)
+        return re.sub(r'[^\w\s@.-]', '', text).strip()
 
-for column in filtered_columns:
-    if column not in {"Email", "Profile Url", "Phone Number From Drop Contact"}:
-        data[column] = data[column].apply(clean_text)
+    for column in filtered_columns:
+        if column not in {"Email", "Profile Url", "Phone Number From Drop Contact"}:
+            data[column] = data[column].apply(clean_text)
 
-def validate_email(email):
-    if re.match(r"[^@]+@[^@]+\.[^@]+", email):
-        return email
-    return "invalid"
-
-data["Email"] = data["Email"].apply(validate_email)
-
-def clean_phone(phone):
-    if pd.isna(phone) or phone.strip() == "":
+    def validate_email(email):
+        if re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            return email
         return "invalid"
-    cleaned = re.sub(r'[^\d+]', '', phone)
-    if len(cleaned) >= 8:
-        return cleaned
-    return "invalid"
 
-data["Phone Number From Drop Contact"] = data["Phone Number From Drop Contact"].apply(clean_phone)
+    data["Email"] = data["Email"].apply(validate_email)
 
-def detect_language(description):
-    if description:
-        try:
-            return detect(description)
-        except LangDetectException:
-            return "en"
-    return "en"
+    def clean_phone(phone):
+        if pd.isna(phone) or phone.strip() == "":
+            return "invalid"
+        cleaned = re.sub(r'[^\d+]', '', phone)
+        if len(cleaned) >= 8:
+            return cleaned
+        return "invalid"
 
-data['language'] = data['Description'].apply(detect_language)
+    data["Phone Number From Drop Contact"] = data["Phone Number From Drop Contact"].apply(clean_phone)
 
-# Effacer les données précédentes et mettre à jour la feuille Google Sheets
-worksheet2.clear()
-worksheet2.update([data.columns.values.tolist()] + data.values.tolist())
+    def detect_language(description):
+        if description:
+            try:
+                return detect(description)
+            except LangDetectException:
+                return "en"
+        return "en"
 
-# Utiliser le timestamp comme nom du fichier
-csv_path = f"cleaned_data_{timestamp}.csv"
-data.to_csv(csv_path, index=False)
+    data['language'] = data['Description'].apply(detect_language)
 
-# ID de la destination Google Drive
-folder_id = "1M7Ou_EZwp5ltj501ClkAYoHXEI6Fvlof"
+    # Clear previous data and update the output Google Sheets
+    worksheet2.clear()
+    worksheet2.update([data.columns.values.tolist()] + data.values.tolist())
 
-# Télécharger le fichier CSV vers Google Drive
-file_metadata = {
-    'name': f"{timestamp}.csv",
-    'parents': [folder_id]
-}
-media = MediaFileUpload(csv_path, mimetype='text/csv')
-file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    # Save data as a CSV file with the timestamp
+    csv_path = f"cleaned_data_{timestamp}.csv"
+    data.to_csv(csv_path, index=False)
 
-print(f"Fichier exporté en CSV et uploadé à Google Drive avec ID : {file.get('id')}")
+    # Upload the CSV file to Google Drive
+    folder_id = "1M7Ou_EZwp5ltj501ClkAYoHXEI6Fvlof"
+    file_metadata = {'name': f"{timestamp}.csv", 'parents': [folder_id]}
+    media = MediaFileUpload(csv_path, mimetype='text/csv')
+    file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+
+    return f"File uploaded to Google Drive with ID: {file.get('id')}"
+
+# Flask route to trigger the script with a POST request
+@app.route('/process', methods=['POST'])
+def process_route():
+    try:
+        result = process_data()
+        return jsonify({'message': result}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Start the Flask app
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
