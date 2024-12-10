@@ -24,7 +24,7 @@ scope = [
 ]
 
 # Load credentials from the JSON file
-creds = ServiceAccountCredentials.from_json_keyfile_name('awesome-height-441419-j4-5f2808cabaf5.json', scope)
+creds = ServiceAccountCredentials.from_json_keyfile_name(creds_dict, scope)
 client = gspread.authorize(creds)
 drive_service = build('drive', 'v3', credentials=creds)
 
