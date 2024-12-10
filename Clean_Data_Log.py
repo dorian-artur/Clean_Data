@@ -9,6 +9,7 @@ from datetime import datetime
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import os
+import json
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -24,18 +25,19 @@ scope = [
 ]
 
 # Load credentials from the JSON file
-creds = ServiceAccountCredentials.from_json_keyfile_name(creds_dict, scope)
+creds_dict = json.loads(os.getenv('GOOGLE_CREDENTIALS'))
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 drive_service = build('drive', 'v3', credentials=creds)
 
 # Your original script logic encapsulated in a function
 def process_data():
     # Load data from the input Google Sheets
-    sheet_input = client.open_by_url("https://docs.google.com/spreadsheets/d/1eZs3-64SL92NrcmViDehMDTn8fIJTdCZqvsshQT1nek/edit?usp=sharing")
+    sheet_input = client.open_by_url(Url_Data)
     worksheet1 = sheet_input.get_worksheet(0)
 
     # Load the output sheet
-    sheet_output = client.open_by_url("https://docs.google.com/spreadsheets/d/1xRISBywX7X-tK3HSWeDlup-_VcFXc0dGwyarXvfMwCM/edit?usp=sharing")
+    sheet_output = client.open_by_url(Url_DataClean)
     worksheet2 = sheet_output.get_worksheet(0)
 
     # Get existing data from the output sheet
@@ -146,7 +148,7 @@ def process_data():
     data.to_csv(csv_path, index=False)
 
     # Upload the CSV file to Google Drive
-    folder_id = "1M7Ou_EZwp5ltj501ClkAYoHXEI6Fvlof"
+    folder_id = var_FolderID
     file_metadata = {'name': f"{timestamp}.csv", 'parents': [folder_id]}
     media = MediaFileUpload(csv_path, mimetype='text/csv')
     file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
