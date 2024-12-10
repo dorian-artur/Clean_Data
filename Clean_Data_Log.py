@@ -27,6 +27,8 @@ scope = [
 
 # Load credentials from environment variables
 google_credentials_json = os.getenv('GOOGLE_CREDENTIALS')
+if not google_credentials_json:
+    raise ValueError("Environment variable 'GOOGLE_CREDENTIALS' not set or invalid.")
 creds_dict = json.loads(google_credentials_json)
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
@@ -37,7 +39,10 @@ url_data = os.getenv('Url_Data')
 url_data_clean = os.getenv('Url_DataClean')
 folder_id = os.getenv('var_FolderID')
 
-# Your original script logic encapsulated in a function
+if not url_data or not url_data_clean or not folder_id:
+    raise ValueError("One or more required environment variables are not set (Url_Data, Url_DataClean, var_FolderID).")
+
+# Function to process data
 def process_data():
     # Configure timezone
     local_tz = pytz.timezone('America/Lima')  # Cambia a tu zona horaria
@@ -164,16 +169,15 @@ def process_data():
 
     return f"File uploaded to Google Drive with ID: {file.get('id')}"
 
-    # Flask route to trigger the script with a POST request
-    @app.route('/process', methods=['POST'])
-    def process_route():
-        try:
-            result = process_data()
-            return jsonify({'message': result}), 200
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-    
-    # Start the Flask app
-    if __name__ == '__main__':
-        app.run(debug=True, port=5000)
+# Flask route to trigger the script with a POST request
+@app.route('/process', methods=['POST'])
+def process_route():
+    try:
+        result = process_data()
+        return jsonify({'message': result}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
+# Start the Flask app
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
