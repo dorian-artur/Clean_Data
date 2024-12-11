@@ -136,7 +136,7 @@ def process_data():
 
     def clean_phone(phone):
         if pd.isna(phone) or phone.strip() == "":
-            return ""
+            return "000-000-0000"
         cleaned = re.sub(r'[^\d+]', '', phone)
         if len(cleaned) >= 8:
             return cleaned
