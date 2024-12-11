@@ -130,7 +130,7 @@ def process_data():
     def validate_email(email):
         if re.match(r"[^@]+@[^@]+\.[^@]+", email):
             return email
-        return ""
+        return "error@error.ca"
 
     data["Email"] = data["Email"].apply(validate_email)
 
@@ -140,7 +140,7 @@ def process_data():
         cleaned = re.sub(r'[^\d+]', '', phone)
         if len(cleaned) >= 8:
             return cleaned
-        return ""
+        return "000-000-0000"
 
     data["Phone Number From Drop Contact"] = data["Phone Number From Drop Contact"].apply(clean_phone)
 
