@@ -11,7 +11,7 @@ import pytz  # Para configurar la zona horaria
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import os
-
+import request 
 # Initialize Flask app
 app = Flask(__name__)
 
@@ -166,7 +166,25 @@ def process_data():
     file_metadata = {'name': f"cleaned_data_{timestamp}.csv", 'parents': [folder_id]}
     media = MediaFileUpload(csv_path, mimetype='text/csv')
     file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    
+        # URL a la que quieres hacer el POST
+    url = "https://handle-data-from-python.onrender.com/clean"
+    
+    # Headers
+    headers = {
+        "Authorization": "Bearer token_de_acceso"
+    }
+    
+    # Realizando la solicitud POST
+    response = requests.post(url, headers=headers)
 
+# Mostrando la respuesta
+if response.status_code == 200:
+    print("Respuesta exitosa:", response.json())
+else:
+    print(f"Error {response.status_code}: {response.text}")
+
+    
     return f"File uploaded to Google Drive with ID: {file.get('id')}"
 
 # Flask route to trigger the script with a POST request
