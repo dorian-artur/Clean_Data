@@ -130,17 +130,17 @@ def process_data():
     def validate_email(email):
         if re.match(r"[^@]+@[^@]+\.[^@]+", email):
             return email
-        return "invalid"
+        return ""
 
     data["Email"] = data["Email"].apply(validate_email)
 
     def clean_phone(phone):
         if pd.isna(phone) or phone.strip() == "":
-            return "invalid"
+            return ""
         cleaned = re.sub(r'[^\d+]', '', phone)
         if len(cleaned) >= 8:
             return cleaned
-        return "invalid"
+        return ""
 
     data["Phone Number From Drop Contact"] = data["Phone Number From Drop Contact"].apply(clean_phone)
 
