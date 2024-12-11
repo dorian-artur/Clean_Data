@@ -167,23 +167,10 @@ def process_data():
     media = MediaFileUpload(csv_path, mimetype='text/csv')
     file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
     
-        # URL a la que quieres hacer el POST
-    url = "https://handle-data-from-python.onrender.com/clean"
+   
     
-    # Headers
-    headers = {
-        "Authorization": "Bearer token_de_acceso"
-    }
-    
-    # Realizando la solicitud POST
-    response = requests.post(url, headers=headers)
-
-# Mostrando la respuesta
-if response.status_code == 200:
-    print("Respuesta exitosa:", response.json())
-else:
-    print(f"Error {response.status_code}: {response.text}")
-
+  
+ 
     
     return f"File uploaded to Google Drive with ID: {file.get('id')}"
 
