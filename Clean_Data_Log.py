@@ -130,7 +130,7 @@ def process_data():
     def validate_email(email):
         if re.match(r"[^@]+@[^@]+\.[^@]+", email):
             return email
-        return "error@error.ca"
+        return "s@s.ca"
 
     data["Email"] = data["Email"].apply(validate_email)
 
