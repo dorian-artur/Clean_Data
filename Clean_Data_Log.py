@@ -140,7 +140,7 @@ def process_data():
         cleaned = re.sub(r'[^\d+]', '', phone)
         if len(cleaned) >= 8:
             return cleaned
-        return "invalid"
+        return " "
 
     data["Phone Number From Drop Contact"] = data["Phone Number From Drop Contact"].apply(clean_phone)
 
