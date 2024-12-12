@@ -11,8 +11,7 @@ import pytz  # Para configurar la zona horaria
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import os
-import requests
-
+import request 
 # Initialize Flask app
 app = Flask(__name__)
 
@@ -131,17 +130,17 @@ def process_data():
     def validate_email(email):
         if re.match(r"[^@]+@[^@]+\.[^@]+", email):
             return email
-        return "s@s.ca"
+        return "invalid"
 
     data["Email"] = data["Email"].apply(validate_email)
 
     def clean_phone(phone):
         if pd.isna(phone) or phone.strip() == "":
-            return "000-000-0000"
+            return "invalid"
         cleaned = re.sub(r'[^\d+]', '', phone)
         if len(cleaned) >= 8:
             return cleaned
-        return "000-000-0000"
+        return "invalid"
 
     data["Phone Number From Drop Contact"] = data["Phone Number From Drop Contact"].apply(clean_phone)
 
@@ -167,12 +166,12 @@ def process_data():
     file_metadata = {'name': f"cleaned_data_{timestamp}.csv", 'parents': [folder_id]}
     media = MediaFileUpload(csv_path, mimetype='text/csv')
     file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-    
-   
-    
-  
- 
-    
+
+
+
+
+
+
     return f"File uploaded to Google Drive with ID: {file.get('id')}"
 
 # Flask route to trigger the script with a POST request
