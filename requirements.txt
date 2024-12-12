@@ -1,25 +1,25 @@
-# Dependencies for working with Google Sheets
+# Dependencias para trabajar con Google Sheets
 gspread==5.7.0
 oauth2client==4.1.3
 
-# Dependencies for language detection
+# Dependencias para la detección de idioma
 langdetect==1.0.9
 pycountry==22.3.5
 langcodes==3.3.0
 
-# Render dependencies (run Flask on a server)
+# Dependencias para Render (ejecutar Flask en un servidor)
 numpy==1.23.0
 pandas==1.5.0
 flask==2.2.0
 gunicorn==20.1.0
 werkzeug==2.2.0
 
-# Dependencies to work with Google APIs
-google-api-python-client==2.93.0 
-google-auth==2.22.0              
-google-auth-httplib2==0.2.0      
-google-auth-oauthlib==0.5.3      
+# Dependencias para trabajar con APIs de Google
+google-api-python-client==2.0.0  # Compatible con google-auth==1.12.0
+google-auth==1.12.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==0.4.6
 
-# Additional dependencies required
+# Dependencias adicionales
 requests==2.32.0
 pytz==2024.2
