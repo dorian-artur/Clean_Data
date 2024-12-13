@@ -130,16 +130,17 @@ def process_data():
     # Function to extract the correct email based on column priority
     def get_valid_email(row):
         # Check "Mail From Dropcontact" first
-        if pd.notna(row.get("Mail From Dropcontact")) and re.match(r"[^@]+@[^@]+\.[^@]+", row["Mail From Dropcontact"]):
+        if pd.notna(row.get("Mail From Dropcontact")) and re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", row["Mail From Dropcontact"]):
             return row["Mail From Dropcontact"]
         # Then check "Email"
-        if pd.notna(row.get("Email")) and re.match(r"[^@]+@[^@]+\.[^@]+", row["Email"]):
+        if pd.notna(row.get("Email")) and re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", row["Email"]):
             return row["Email"]
         # Finally check "Professional Email"
-        if pd.notna(row.get("Professional Email")) and re.match(r"[^@]+@[^@]+\.[^@]+", row["Professional Email"]):
+        if pd.notna(row.get("Professional Email")) and re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", row["Professional Email"]):
             return row["Professional Email"]
         # Default if no valid email is found
         return "invalid@loriginal.org"
+
     
     # Apply the function row by row
     data["Valid Email"] = data.apply(get_valid_email, axis=1)
