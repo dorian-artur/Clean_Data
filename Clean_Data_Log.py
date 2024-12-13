@@ -51,24 +51,23 @@ if not url_data or not url_data_clean or not folder_id:
 def parse_location(location):
     """Parse the Location field into components using geopy."""
     if pd.isna(location) or location.strip() == "":
-        return {"City": "", "State": "", "Country": "", "Postal Code": ""}
+        return {"City": "Empty", "State": "Empty", "Country": "Empty", "Postal Code": "Empty"}
 
     try:
         geo_location = geolocator.geocode(location, timeout=10)
         if geo_location and geo_location.raw.get('address'):
             address = geo_location.raw['address']
             return {
-                "City": address.get('city', address.get('town', address.get('village', ""))),
-                "State": address.get('state', ""),
-                "Country": address.get('country', ""),
-                "Postal Code": address.get('postcode', "")
+                "City": address.get('city', address.get('town', address.get('village', "Empty"))),
+                "State": address.get('state', "Empty"),
+                "Country": address.get('country', "Empty"),
+                "Postal Code": address.get('postcode', "Empty")
             }
     except GeocoderTimedOut:
         print(f"Geocoder timed out for location: {location}")
     except Exception as e:
         print(f"Error parsing location '{location}': {e}")
-
-    return {"City": "", "State": "", "Country": "", "Postal Code": ""}
+    return {"City": "Empty", "State": "Empty", "Country": "Empty", "Postal Code": "Empty"}
 
 # Function to process data
 def process_data():
@@ -91,7 +90,7 @@ def process_data():
     # Create a DataFrame
     data = pd.DataFrame(rows, columns=headers)
 
-    # Ensure required columns exist
+    # Ensure email and phone columns exist
     for col in ["Mail From Dropcontact", "Email", "Professional Email", "Phone", "Phone Number From Drop Contact"]:
         if col not in data.columns:
             data[col] = None
@@ -102,13 +101,14 @@ def process_data():
     # Add 'log' column with unique identifiers
     data['log'] = data['Nro'].apply(lambda x: f"{timestamp}-{x}")
 
-    # Validate and clean email addresses
+    # Function to validate email format
     def is_valid_email(email):
         if email and isinstance(email, str):
             regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
             return re.match(regex, email) is not None
         return False
 
+    # Function to get the best email based on priority
     def get_valid_email(row):
         email_columns = ["Mail From Dropcontact", "Email", "Professional Email"]
         for col in email_columns:
@@ -116,9 +116,10 @@ def process_data():
                 return row[col]
         return "invalid@loriginal.org"
 
+    # Apply email validation
     data["Valid Email"] = data.apply(get_valid_email, axis=1)
 
-    # Clean phone numbers
+    # Function to clean phone numbers
     def clean_phone(phone):
         if pd.isna(phone) or phone.strip() == "":
             return ""
@@ -127,10 +128,11 @@ def process_data():
             return cleaned
         return ""
 
+    # Clean both phone columns
     data["Phone"] = data["Phone"].apply(clean_phone)
     data["Phone Number From Drop Contact"] = data["Phone Number From Drop Contact"].apply(clean_phone)
 
-    # Combine phone numbers
+    # Combine phones into a single field
     def get_combined_phone(row):
         if row["Phone"]:
             return row["Phone"]
@@ -140,7 +142,7 @@ def process_data():
 
     data["Combined Phone"] = data.apply(get_combined_phone, axis=1)
 
-    # Detect language
+    # Detect language from the description
     def detect_language(description):
         if description:
             try:
@@ -153,16 +155,18 @@ def process_data():
 
     # Parse location
     location_components = data["Location"].apply(parse_location)
-    location_df = pd.DataFrame(list(location_components.tolist()))
-    data = pd.concat([data, location_df], axis=1)
+    data["City"] = location_components.apply(lambda x: x["City"])
+    data["State"] = location_components.apply(lambda x: x["State"])
+    data["Country"] = location_components.apply(lambda x: x["Country"])
+    data["Postal Code"] = location_components.apply(lambda x: x["Postal Code"])
 
-    # Ensure columns are included in output
+    # Define output columns
     output_columns = [
         "Nro", "FirstName", "Last Name", "Full Name", "Profile Url",
         "Mail From Dropcontact", "Email", "Professional Email", "Valid Email",
         "Phone", "Phone Number From Drop Contact", "Combined Phone",
-        "City", "State", "Country", "Postal Code",
-        "Company", "Job Title", "Description", "log", "language"
+        "City", "State", "Country", "Postal Code", "Company", "Job Title",
+        "Description", "log", "language"
     ]
 
     # Reorder and filter columns for the output
