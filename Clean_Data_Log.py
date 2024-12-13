@@ -141,6 +141,8 @@ def process_data():
     data["Country"] = location_components.apply(lambda x: x["Country"])
     data["Postal Code"] = location_components.apply(lambda x: x["Postal Code"])
 
+    print("Final Data Columns:", data.columns.tolist())
+
     output_columns = [
         "Nro", "FirstName", "Last Name", "Full Name", "Profile Url",
         "Mail From Dropcontact", "Email", "Professional Email", "Valid Email",
