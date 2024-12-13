@@ -14,7 +14,7 @@ flask==2.2.0
 gunicorn==20.1.0
 requests==2.32.3
 werkzeug==2.2.0
-google-api-python-client==2.92.0
+google-api-python-client==1.12.8  # Versión compatible con google-auth==1.12.0
 
 # Dependencias para la geolocalización
 geopy==2.3.0
