@@ -1,27 +1,74 @@
-# Function to parse location using geopy
+from flask import Flask, request, jsonify
+import pandas as pd
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+import json
+import re
+from langdetect import detect, DetectorFactory
+from langdetect.lang_detect_exception import LangDetectException
+from datetime import datetime
+import pytz
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut
+import os
+
+# Initialize Flask app
+app = Flask(__name__)
+
+# Configure seed for consistent results with langdetect
+DetectorFactory.seed = 0
+
+# Initialize the geolocator
+geolocator = Nominatim(user_agent="location_parser")
+
+# Configure authentication with Google Sheets and Drive
+scope = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
+# Load credentials from environment variables
+google_credentials_json = os.getenv('GOOGLE_CREDENTIALS')
+if not google_credentials_json:
+    raise ValueError("Environment variable 'GOOGLE_CREDENTIALS' not set or invalid.")
+creds_dict = json.loads(google_credentials_json)
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+client = gspread.authorize(creds)
+drive_service = build('drive', 'v3', credentials=creds)
+
+# Variables for Google Sheets and Drive
+url_data = os.getenv('Url_Data')
+url_data_clean = os.getenv('Url_DataClean')
+folder_id = os.getenv('var_FolderID')
+
+if not url_data or not url_data_clean or not folder_id:
+    raise ValueError("One or more required environment variables are not set (Url_Data, Url_DataClean, var_FolderID).")
+
+# Function to parse location
 def parse_location(location):
     """Parse the Location field into components using geopy."""
     if pd.isna(location) or location.strip() == "":
-        return {"City": "Unknown", "State": "Unknown", "Country": "Unknown", "Postal Code": "Unknown"}
+        return {"City": "", "State": "", "Country": "", "Postal Code": ""}
     
     try:
-        # Attempt to geocode the location
         geo_location = geolocator.geocode(location, timeout=10)
         if geo_location and geo_location.raw.get('address'):
             address = geo_location.raw['address']
             return {
-                "City": address.get('city', address.get('town', address.get('village', "Unknown"))),
-                "State": address.get('state', "Unknown"),
-                "Country": address.get('country', "Unknown"),
-                "Postal Code": address.get('postcode', "Unknown")
+                "City": address.get('city', address.get('town', address.get('village', ""))),
+                "State": address.get('state', ""),
+                "Country": address.get('country', ""),
+                "Postal Code": address.get('postcode', "")
             }
     except GeocoderTimedOut:
         print(f"Geocoder timed out for location: {location}")
     except Exception as e:
         print(f"Error parsing location '{location}': {e}")
     
-    # Fallback in case of an error
-    return {"City": "Unknown", "State": "Unknown", "Country": "Unknown", "Postal Code": "Unknown"}
+    return {"City": "", "State": "", "Country": "", "Postal Code": ""}
 
 # Function to process data
 def process_data():
