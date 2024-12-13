@@ -126,21 +126,27 @@ def process_data():
     for column in filtered_columns:
         if column not in {"Email", "Profile Url", "Phone Number From Drop Contact"}:
             data[column] = data[column].apply(clean_text)
+        
+    # Function to validate email format
+    def is_valid_email(email):
+        if email and isinstance(email, str):
+            # Use a stricter regex for email validation
+            regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+            return re.match(regex, email) is not None
+        return False
     
     # Function to extract the correct email based on column priority
     def get_valid_email(row):
-        # Check "Mail From Dropcontact" first
-        if pd.notna(row.get("Mail From Dropcontact")) and re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", row["Mail From Dropcontact"]):
-            return row["Mail From Dropcontact"]
-        # Then check "Email"
-        if pd.notna(row.get("Email")) and re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", row["Email"]):
-            return row["Email"]
-        # Finally check "Professional Email"
-        if pd.notna(row.get("Professional Email")) and re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", row["Professional Email"]):
-            return row["Professional Email"]
+        # Priority order: Mail From Dropcontact -> Email -> Professional Email
+        email_columns = ["Mail From Dropcontact", "Email", "Professional Email"]
+        for col in email_columns:
+            if col in row and is_valid_email(row[col]):
+                return row[col]
         # Default if no valid email is found
         return "invalid@loriginal.org"
-
+    
+    # Apply the function row by row
+    data["Valid Email"] = data.apply(get_valid_email, axis=1)
     
     # Apply the function row by row
     data["Valid Email"] = data.apply(get_valid_email, axis=1)
