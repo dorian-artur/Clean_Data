@@ -144,7 +144,7 @@ def process_data():
     output_columns = [
         "Nro", "FirstName", "Last Name", "Full Name", "Profile Url",
         "Mail From Dropcontact", "Email", "Professional Email", "Valid Email",
-        "Phone", "Phone Number From Drop Contact", "Combined Phone",
+        "Phone", "Phone Number From Drop Contact", "Combined Phone","Location",
         "City", "State", "Country", "Postal Code", "Company", "Job Title",
         "Description", "log", "language"
     ]
