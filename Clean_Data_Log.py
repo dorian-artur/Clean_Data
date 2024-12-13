@@ -126,13 +126,23 @@ def process_data():
     for column in filtered_columns:
         if column not in {"Email", "Profile Url", "Phone Number From Drop Contact"}:
             data[column] = data[column].apply(clean_text)
-
-    def validate_email(email):
-        if re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            return email
+    
+    def get_valid_email(row):
+        # Define las columnas en orden de prioridad
+        email_columns = ["Email", "Mail From Dropcontact", "Professional Email"]
+        for col in email_columns:
+            if col in row and pd.notna(row[col]) and re.match(r"[^@]+@[^@]+\.[^@]+", row[col]):
+                return row[col]
         return "invalid@loriginal.org"
+        
+    data["Email"] = data.apply(get_valid_email, axis=1)
 
-    data["Email"] = data["Email"].apply(validate_email)
+   # def validate_email(email):
+   #     if re.match(r"[^@]+@[^@]+\.[^@]+", email):
+   #         return email
+   #     return "invalid@loriginal.org"
+
+   # data["Email"] = data["Email"].apply(validate_email)
 
     def clean_phone(phone):
         if pd.isna(phone) or phone.strip() == "":
@@ -166,12 +176,6 @@ def process_data():
     file_metadata = {'name': f"cleaned_data_{timestamp}.csv", 'parents': [folder_id]}
     media = MediaFileUpload(csv_path, mimetype='text/csv')
     file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-
-
-
-
-
-
     return f"File uploaded to Google Drive with ID: {file.get('id')}"
 
 # Flask route to trigger the script with a POST request
