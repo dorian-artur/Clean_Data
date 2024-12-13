@@ -156,10 +156,8 @@ def process_data():
 
     # Parse location
     location_components = data["Location"].apply(parse_location)
-    data["City"] = location_components.apply(lambda x: x["City"])
-    data["State"] = location_components.apply(lambda x: x["State"])
-    data["Country"] = location_components.apply(lambda x: x["Country"])
-    data["Postal Code"] = location_components.apply(lambda x: x["Postal Code"])
+    location_df = pd.DataFrame(list(location_components))
+    data = pd.concat([data, location_df], axis=1)
 
     # Define output columns
     output_columns = [
