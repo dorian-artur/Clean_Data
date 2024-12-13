@@ -127,22 +127,24 @@ def process_data():
         if column not in {"Email", "Profile Url", "Phone Number From Drop Contact"}:
             data[column] = data[column].apply(clean_text)
     
+    # Function to extract a valid email from the specified columns
     def get_valid_email(row):
-        # Define las columnas en orden de prioridad
+        # Define the columns in order of priority
         email_columns = ["Email", "Mail From Dropcontact", "Professional Email"]
         for col in email_columns:
+            # Check if the column exists, is not null, and matches the email format
             if col in row and pd.notna(row[col]) and re.match(r"[^@]+@[^@]+\.[^@]+", row[col]):
-                return row[col]
+                return row[col]  # Return the first valid email found
+        # If no valid email is found in any column, return a default value
         return "invalid@loriginal.org"
-        
-    data["Email"] = data.apply(get_valid_email, axis=1)
+    
+    # Apply the function to each row in the DataFrame
+    if all(col in data.columns for col in ["Email", "Mail From Dropcontact", "Professional Email"]):
+        data["Email"] = data.apply(get_valid_email, axis=1)
+    else:
+        # If any of the required columns is missing, assign a default value
+        data["Email"] = "invalid@loriginal.org"
 
-   # def validate_email(email):
-   #     if re.match(r"[^@]+@[^@]+\.[^@]+", email):
-   #         return email
-   #     return "invalid@loriginal.org"
-
-   # data["Email"] = data["Email"].apply(validate_email)
 
     def clean_phone(phone):
         if pd.isna(phone) or phone.strip() == "":
