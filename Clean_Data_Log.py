@@ -63,10 +63,10 @@ def process_data():
     # Create a DataFrame
     data = pd.DataFrame(rows, columns=headers)
 
-    # Ensure email columns exist
-    for email_col in ["Mail From Dropcontact", "Email", "Professional Email"]:
-        if email_col not in data.columns:
-            data[email_col] = None
+    # Ensure email and phone columns exist
+    for col in ["Mail From Dropcontact", "Email", "Professional Email", "Phone", "Phone Number From Drop Contact"]:
+        if col not in data.columns:
+            data[col] = None
 
     # Add 'Nro' column with continuous numbering
     data.insert(0, 'Nro', range(1, len(data) + 1))
@@ -103,8 +103,19 @@ def process_data():
             return cleaned
         return ""
 
-    # Apply phone number cleaning
+    # Clean both phone columns
+    data["Phone"] = data["Phone"].apply(clean_phone)
     data["Phone Number From Drop Contact"] = data["Phone Number From Drop Contact"].apply(clean_phone)
+
+    # Combine phones into a single field
+    def get_combined_phone(row):
+        if row["Phone"]:
+            return row["Phone"]
+        if row["Phone Number From Drop Contact"]:
+            return row["Phone Number From Drop Contact"]
+        return ""
+
+    data["Combined Phone"] = data.apply(get_combined_phone, axis=1)
 
     # Detect language from the description
     def detect_language(description):
@@ -121,7 +132,8 @@ def process_data():
     output_columns = [
         "Nro", "FirstName", "Last Name", "Full Name", "Profile Url",
         "Mail From Dropcontact", "Email", "Professional Email", "Valid Email",
-        "Location", "Company", "Job Title", "Description", "Phone Number From Drop Contact", "log", "language"
+        "Phone", "Phone Number From Drop Contact", "Combined Phone",
+        "Location", "Company", "Job Title", "Description", "log", "language"
     ]
 
     # Reorder and filter columns for the output
