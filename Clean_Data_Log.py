@@ -96,11 +96,14 @@ def process_data():
     def clean_phone(phone):
         if pd.isna(phone) or phone.strip() == "":
             return ""
+        # Remove all non-digit characters except "+"
         cleaned = re.sub(r'[^\d+]', '', phone)
+        # Ensure the phone number is at least 8 digits
         if len(cleaned) >= 8:
             return cleaned
         return ""
 
+    # Apply phone number cleaning
     data["Phone Number From Drop Contact"] = data["Phone Number From Drop Contact"].apply(clean_phone)
 
     # Detect language from the description
