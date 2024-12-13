@@ -10,6 +10,8 @@ from datetime import datetime
 import pytz
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut
 import os
 
 # Initialize Flask app
@@ -17,6 +19,9 @@ app = Flask(__name__)
 
 # Configure seed for consistent results with langdetect
 DetectorFactory.seed = 0
+
+# Initialize the geolocator
+geolocator = Nominatim(user_agent="location_parser")
 
 # Configure authentication with Google Sheets and Drive
 scope = [
@@ -41,6 +46,28 @@ folder_id = os.getenv('var_FolderID')
 
 if not url_data or not url_data_clean or not folder_id:
     raise ValueError("One or more required environment variables are not set (Url_Data, Url_DataClean, var_FolderID).")
+
+# Function to parse location
+def parse_location(location):
+    """Parse the Location field into components using geopy."""
+    if pd.isna(location) or location.strip() == "":
+        return {"City": "Unknown", "State": "Unknown", "Country": "Unknown", "Postal Code": "Unknown"}
+    
+    try:
+        geo_location = geolocator.geocode(location, timeout=10)
+        if geo_location and geo_location.raw.get('address'):
+            address = geo_location.raw['address']
+            return {
+                "City": address.get('city', address.get('town', address.get('village', "Unknown"))),
+                "State": address.get('state', "Unknown"),
+                "Country": address.get('country', "Unknown"),
+                "Postal Code": address.get('postcode', "Unknown")
+            }
+    except GeocoderTimedOut:
+        print(f"Geocoder timed out for location: {location}")
+    except Exception as e:
+        print(f"Error parsing location '{location}': {e}")
+    return {"City": "Unknown", "State": "Unknown", "Country": "Unknown", "Postal Code": "Unknown"}
 
 # Function to process data
 def process_data():
@@ -96,9 +123,7 @@ def process_data():
     def clean_phone(phone):
         if pd.isna(phone) or phone.strip() == "":
             return ""
-        # Remove all non-digit characters except "+"
         cleaned = re.sub(r'[^\d+]', '', phone)
-        # Ensure the phone number is at least 8 digits
         if len(cleaned) >= 8:
             return cleaned
         return ""
@@ -128,12 +153,20 @@ def process_data():
 
     data['language'] = data['Description'].apply(detect_language)
 
+    # Parse location
+    location_components = data["Location"].apply(parse_location)
+    data["City"] = location_components.apply(lambda x: x["City"])
+    data["State"] = location_components.apply(lambda x: x["State"])
+    data["Country"] = location_components.apply(lambda x: x["Country"])
+    data["Postal Code"] = location_components.apply(lambda x: x["Postal Code"])
+
     # Define output columns
     output_columns = [
         "Nro", "FirstName", "Last Name", "Full Name", "Profile Url",
         "Mail From Dropcontact", "Email", "Professional Email", "Valid Email",
         "Phone", "Phone Number From Drop Contact", "Combined Phone",
-        "Location", "Company", "Job Title", "Description", "log", "language"
+        "City", "State", "Country", "Postal Code", "Company", "Job Title",
+        "Description", "log", "language"
     ]
 
     # Reorder and filter columns for the output
