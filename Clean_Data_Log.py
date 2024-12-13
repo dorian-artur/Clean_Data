@@ -7,11 +7,11 @@ import re
 from langdetect import detect, DetectorFactory
 from langdetect.lang_detect_exception import LangDetectException
 from datetime import datetime
-import pytz  # Para configurar la zona horaria
+import pytz
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import os
-import requests 
+
 # Initialize Flask app
 app = Flask(__name__)
 
@@ -45,8 +45,8 @@ if not url_data or not url_data_clean or not folder_id:
 # Function to process data
 def process_data():
     # Configure timezone
-    local_tz = pytz.timezone('America/Lima')  # Cambia a tu zona horaria
-    timestamp = datetime.now(local_tz).strftime("%Y%m%d%H%M%S")  # Incluye segundos
+    local_tz = pytz.timezone('America/Lima')
+    timestamp = datetime.now(local_tz).strftime("%Y%m%d%H%M%S")
 
     # Load data from the input Google Sheets
     sheet_input = client.open_by_url(url_data)
@@ -56,102 +56,43 @@ def process_data():
     sheet_output = client.open_by_url(url_data_clean)
     worksheet2 = sheet_output.get_worksheet(0)
 
-    # Get existing data from the output sheet
-    existing_data = worksheet2.get_all_records()
-
-    # Determine the next 'Nro' number
-    if existing_data:
-        last_id = max(row['Nro'] for row in existing_data if 'Nro' in row and str(row['Nro']).isdigit())
-    else:
-        last_id = 0  # If the sheet is empty, start at 0
-
-    # Read the header row from the input Google Sheets
+    # Read the header row and data
     headers = worksheet1.row_values(1)
-
-    # Function to make headers unique if they are duplicated
-    def make_headers_unique(headers):
-        seen = {}
-        unique_headers = []
-        for header in headers:
-            if header in seen:
-                seen[header] += 1
-                unique_headers.append(f"{header}_{seen[header]}")
-            else:
-                seen[header] = 0
-                unique_headers.append(header)
-        return unique_headers
-
-    # Make headers unique
-    unique_headers = make_headers_unique(headers)
-
-    # Read the data from the sheet excluding the header row
     rows = worksheet1.get_all_values()[1:]
 
-    # Create a DataFrame with unique headers
-    data = pd.DataFrame(rows, columns=unique_headers)
+    # Create a DataFrame
+    data = pd.DataFrame(rows, columns=headers)
 
-    # Select only the necessary columns for processing
-    required_columns = [
-        "FirstName", "Last Name", "Full Name", "Profile Url", "Headline", "Email",
-        "Location", "Company", "Job Title", "Description", "Phone Number From Drop Contact"
-    ]
-    filtered_columns = [col for col in required_columns if col in data.columns]
-    data = data[filtered_columns]
+    # Ensure email columns exist
+    for email_col in ["Mail From Dropcontact", "Email", "Professional Email"]:
+        if email_col not in data.columns:
+            data[email_col] = None
 
-    # Filter rows with non-empty first and last names
-    data = data[(data['FirstName'].notna()) & (data['FirstName'] != "") &
-                (data['Last Name'].notna()) & (data['Last Name'] != "")]
+    # Add 'Nro' column with continuous numbering
+    data.insert(0, 'Nro', range(1, len(data) + 1))
 
-    # Add 'Nro' column at the beginning with continuous numbering
-    data.insert(0, 'Nro', range(last_id + 1, last_id + 1 + len(data)))
-
-    # Add 'log' column with a unique identifier
+    # Add 'log' column with unique identifiers
     data['log'] = data['Nro'].apply(lambda x: f"{timestamp}-{x}")
 
-    # Cleaning and validation as in previous steps
-    replacement_dict = {
-        "Ã¡": "á", "Ã©": "é", "Ã­": "í", "Ã³": "ó", "Ãº": "ú",
-        "Ã±": "ñ", "Ã": "Ñ", "â": "'", "â": "-", "Ã¼": "ü",
-        "â€œ": "\"", "â€": "\"", "â€˜": "'", "â€¢": "-", "â‚¬": "€",
-        "â„¢": "™", "âˆ’": "-", "Â": ""
-    }
-
-    def clean_text(text):
-        if pd.isna(text):
-            return ""
-        for bad, good in replacement_dict.items():
-            text = text.replace(bad, good)
-        return re.sub(r'[^\w\s@.-]', '', text).strip()
-
-    for column in filtered_columns:
-        if column not in {"Email", "Profile Url", "Phone Number From Drop Contact"}:
-            data[column] = data[column].apply(clean_text)
-        
     # Function to validate email format
     def is_valid_email(email):
         if email and isinstance(email, str):
-            # Use a stricter regex for email validation
             regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
             return re.match(regex, email) is not None
         return False
-    
-    # Function to extract the correct email based on column priority
+
+    # Function to get the best email based on priority
     def get_valid_email(row):
-        # Priority order: Mail From Dropcontact -> Email -> Professional Email
         email_columns = ["Mail From Dropcontact", "Email", "Professional Email"]
         for col in email_columns:
             if col in row and is_valid_email(row[col]):
                 return row[col]
-        # Default if no valid email is found
         return "invalid@loriginal.org"
-    
-    # Apply the function row by row
-    data["Valid Email"] = data.apply(get_valid_email, axis=1)
-    
-    # Apply the function row by row
+
+    # Apply email validation
     data["Valid Email"] = data.apply(get_valid_email, axis=1)
 
-
+    # Function to clean phone numbers
     def clean_phone(phone):
         if pd.isna(phone) or phone.strip() == "":
             return ""
@@ -162,6 +103,7 @@ def process_data():
 
     data["Phone Number From Drop Contact"] = data["Phone Number From Drop Contact"].apply(clean_phone)
 
+    # Detect language from the description
     def detect_language(description):
         if description:
             try:
@@ -171,6 +113,16 @@ def process_data():
         return "en"
 
     data['language'] = data['Description'].apply(detect_language)
+
+    # Define output columns
+    output_columns = [
+        "Nro", "FirstName", "Last Name", "Full Name", "Profile Url",
+        "Mail From Dropcontact", "Email", "Professional Email", "Valid Email",
+        "Location", "Company", "Job Title", "Description", "Phone Number From Drop Contact", "log", "language"
+    ]
+
+    # Reorder and filter columns for the output
+    data = data[output_columns]
 
     # Clear previous data and update the output Google Sheets
     worksheet2.clear()
