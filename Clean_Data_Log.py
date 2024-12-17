@@ -51,23 +51,36 @@ def parse_location(location):
     if pd.isna(location) or location.strip() == "":
         return {"City": "Unknown", "State": "Unknown", "Country": "Unknown", "Postal Code": None}
     try:
-        # Dividir la ubicación por comas y limpiar espacios
-        parts = [part.strip() for part in location.split(",")]
+        # Consultar la ubicación usando Nominatim
+        geo_location = geolocator.geocode(location, timeout=10)
+        if geo_location:
+            # Extraer componentes detallados de la ubicación
+            address = geo_location.raw.get('address', {})
+            
+            city = (
+                address.get('city') or
+                address.get('town') or
+                address.get('village') or
+                address.get('hamlet') or
+                "Unknown"
+            )
+            state = address.get('state', "Unknown")
+            country = address.get('country', "Unknown")
+            postal_code = address.get('postcode', None)
 
-        # Inicializar valores
-        city = parts[0] if len(parts) > 0 else "Unknown"
-        state = parts[1] if len(parts) > 1 else "Unknown"
-        country = parts[2] if len(parts) > 2 else "Unknown"
-
-        return {
-            "City": city,
-            "State": state,
-            "Country": country,
-            "Postal Code": None  # Código postal no disponible en la información de entrada
-        }
+            return {
+                "City": city,
+                "State": state,
+                "Country": country,
+                "Postal Code": postal_code
+            }
+    except GeocoderTimedOut:
+        print(f"Geocoder timed out for location: '{location}'")
     except Exception as e:
         print(f"Error parsing location '{location}': {e}")
-        return {"City": "Error", "State": "Error", "Country": "Error", "Postal Code": None}
+
+    # Valores predeterminados en caso de error
+    return {"City": "Unknown", "State": "Unknown", "Country": "Unknown", "Postal Code": None}
 
 
 
