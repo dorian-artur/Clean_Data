@@ -49,22 +49,28 @@ if not url_data or not url_data_clean or not folder_id:
 # Function to parse location
 def parse_location(location):
     if pd.isna(location) or location.strip() == "":
-        return {"City": "Empty", "State": "Empty", "Country": "Empty", "Postal Code": "Empty"}
+        return {"City": "Unknown", "State": "Unknown", "Country": "Unknown", "Postal Code": "Unknown"}
     try:
         geo_location = geolocator.geocode(location, timeout=10)
         if geo_location and geo_location.raw.get('address'):
             address = geo_location.raw['address']
+            city = address.get('city', address.get('town', address.get('village', "City Unknown")))
+            state = address.get('state', "State Unknown")
+            country = address.get('country', "Country Unknown")
+            postal_code = address.get('postcode', "Postal Unknown")
+            
             return {
-                "City": address.get('city', address.get('town', address.get('village', "Empty"))),
-                "State": address.get('state', "Empty"),
-                "Country": address.get('country', "Empty"),
-                "Postal Code": address.get('postcode', "Empty")
+                "City": city,
+                "State": state,
+                "Country": country,
+                "Postal Code": postal_code
             }
     except GeocoderTimedOut:
         print(f"Geocoder timed out for location: {location}")
     except Exception as e:
         print(f"Error parsing location '{location}': {e}")
-    return {"City": "Empty", "State": "Empty", "Country": "Empty", "Postal Code": "Empty"}
+    
+    return {"City": "Error", "State": "Error", "Country": "Error", "Postal Code": "Error"}
 
 # Function to process data
 def process_data():
@@ -87,7 +93,6 @@ def process_data():
             data[col] = None
 
     data.insert(0, 'Nro', range(1, len(data) + 1))
-
     data['log'] = data['Nro'].apply(lambda x: f"{timestamp}-{x}")
 
     def is_valid_email(email):
@@ -144,7 +149,7 @@ def process_data():
     output_columns = [
         "Nro", "FirstName", "Last Name", "Full Name", "Profile Url",
         "Mail From Dropcontact", "Email", "Professional Email", "Valid Email",
-        "Phone", "Phone Number From Drop Contact", "Combined Phone","Location",
+        "Phone", "Phone Number From Drop Contact", "Combined Phone", "Location",
         "City", "State", "Country", "Postal Code", "Company", "Job Title",
         "Description", "log", "language"
     ]
