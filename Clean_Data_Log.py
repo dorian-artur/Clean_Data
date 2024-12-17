@@ -50,27 +50,36 @@ if not url_data or not url_data_clean or not folder_id:
 def parse_location(location):
     if pd.isna(location) or location.strip() == "":
         return {"City": "Unknown", "State": "Unknown", "Country": "Unknown", "Postal Code": "Unknown"}
+
     try:
-        geo_location = geolocator.geocode(location, timeout=10)
-        if geo_location and geo_location.raw.get('address'):
-            address = geo_location.raw['address']
-            city = address.get('city', address.get('town', address.get('village', "City Unknown")))
-            state = address.get('state', "State Unknown")
-            country = address.get('country', "Country Unknown")
-            postal_code = address.get('postcode', "Postal Unknown")
-            
-            return {
-                "City": city,
-                "State": state,
-                "Country": country,
-                "Postal Code": postal_code
-            }
-    except GeocoderTimedOut:
-        print(f"Geocoder timed out for location: {location}")
+        # Expresiones regulares para extraer patrones de ubicación
+        city_pattern = r"([A-Za-z\s]+),\s*([A-Za-z\s]+),\s*([A-Za-z\s]+)"
+        postal_code_pattern = r"\b\d{4,6}\b"
+
+        city_match = re.search(city_pattern, location)
+        postal_match = re.search(postal_code_pattern, location)
+
+        # Extraer ciudad, estado y país
+        if city_match:
+            city = city_match.group(1).strip()
+            state = city_match.group(2).strip()
+            country = city_match.group(3).strip()
+        else:
+            city, state, country = "City Unknown", "State Unknown", "Country Unknown"
+
+        # Extraer código postal si existe
+        postal_code = postal_match.group(0) if postal_match else "Postal Unknown"
+
+        return {
+            "City": city,
+            "State": state,
+            "Country": country,
+            "Postal Code": postal_code
+        }
     except Exception as e:
         print(f"Error parsing location '{location}': {e}")
-    
-    return {"City": "Error", "State": "Error", "Country": "Error", "Postal Code": "Error"}
+        return {"City": "Error", "State": "Error", "Country": "Error", "Postal Code": "Error"}
+
 
 # Function to process data
 def process_data():
@@ -138,9 +147,9 @@ def process_data():
                 return "en"
         return "en"
 
-    data['language'] = data['Description'].apply(detect_language)
-
+     
     location_components = data["Location"].apply(parse_location)
+    
     data["City"] = location_components.apply(lambda x: x["City"])
     data["State"] = location_components.apply(lambda x: x["State"])
     data["Country"] = location_components.apply(lambda x: x["Country"])
