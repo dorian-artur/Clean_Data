@@ -93,7 +93,6 @@ def parse_location(location):
         print(f"Error parsing location '{location}': {e}")
         return {"City": "Unknown", "State": "Unknown", "Country": "Unknown", "Postal Code": None}
 
-
 # Function to process data
 def process_data():
     local_tz = pytz.timezone('America/Lima')
