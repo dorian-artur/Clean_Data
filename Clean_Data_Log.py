@@ -52,22 +52,16 @@ def parse_location(location):
         return {"City": "Unknown", "State": "Unknown", "Country": "Unknown", "Postal Code": "Unknown"}
 
     try:
-        # Expresiones regulares para extraer patrones de ubicación
+        # Expresiones regulares para extraer ciudad, estado y país
         city_pattern = r"([A-Za-z\s]+),\s*([A-Za-z\s]+),\s*([A-Za-z\s]+)"
         postal_code_pattern = r"\b\d{4,6}\b"
 
         city_match = re.search(city_pattern, location)
         postal_match = re.search(postal_code_pattern, location)
 
-        # Extraer ciudad, estado y país
-        if city_match:
-            city = city_match.group(1).strip()
-            state = city_match.group(2).strip()
-            country = city_match.group(3).strip()
-        else:
-            city, state, country = "City Unknown", "State Unknown", "Country Unknown"
-
-        # Extraer código postal si existe
+        city = city_match.group(1).strip() if city_match else "City Unknown"
+        state = city_match.group(2).strip() if city_match else "State Unknown"
+        country = city_match.group(3).strip() if city_match else "Country Unknown"
         postal_code = postal_match.group(0) if postal_match else "Postal Unknown"
 
         return {
@@ -79,7 +73,6 @@ def parse_location(location):
     except Exception as e:
         print(f"Error parsing location '{location}': {e}")
         return {"City": "Error", "State": "Error", "Country": "Error", "Postal Code": "Error"}
-
 
 # Function to process data
 def process_data():
@@ -147,9 +140,10 @@ def process_data():
                 return "en"
         return "en"
 
-     
+    data['language'] = data['Description'].apply(detect_language)
+
+    # Actualización de columnas con parse_location
     location_components = data["Location"].apply(parse_location)
-    
     data["City"] = location_components.apply(lambda x: x["City"])
     data["State"] = location_components.apply(lambda x: x["State"])
     data["Country"] = location_components.apply(lambda x: x["Country"])
