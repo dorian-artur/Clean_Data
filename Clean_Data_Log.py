@@ -14,6 +14,7 @@ from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 import os
 import time
+import pycountry
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -55,29 +56,36 @@ def parse_location(location):
         # Dividir la ubicación en partes basadas en comas
         parts = [part.strip() for part in location.split(",")]
 
-        # Inicializar valores
         city = "Unknown"
         state = "Unknown"
         country = "Unknown"
 
-        # Asignar el primer elemento como City
-        if len(parts) >= 1 and parts[0]:
-            city = parts[0]
-
-        # Asignar el segundo elemento como State/Region
-        if len(parts) >= 2 and parts[1]:
-            state_candidate = parts[1]
-            # Si el valor es una abreviatura con letras mayúsculas (2-3 letras), se toma como State
-            if re.fullmatch(r"[A-Z]{2,3}", state_candidate):
-                state = state_candidate
+        # Si solo hay una parte, comprobar si es un país
+        if len(parts) == 1:
+            single_part = parts[0]
+            # Validar si el texto es un país
+            if pycountry.countries.get(name=single_part) or pycountry.countries.get(alpha_2=single_part):
+                country = single_part
             else:
-                state = state_candidate
+                city = single_part
+        else:
+            # Asignar el primer elemento como City
+            if len(parts) >= 1 and parts[0]:
+                city = parts[0]
 
-        # Asignar el último elemento como Country (al menos 3 letras, evitar abreviaciones)
-        if len(parts) >= 3 and parts[-1]:
-            country_candidate = parts[-1]
-            if len(country_candidate) >= 3:
-                country = country_candidate
+            # Asignar el segundo elemento como State/Region
+            if len(parts) >= 2 and parts[1]:
+                state_candidate = parts[1]
+                if re.fullmatch(r"[A-Z]{2,3}", state_candidate):
+                    state = state_candidate
+                else:
+                    state = state_candidate
+
+            # Asignar el último elemento como Country
+            if len(parts) >= 3 and parts[-1]:
+                country_candidate = parts[-1]
+                if len(country_candidate) >= 3:
+                    country = country_candidate
 
         return {"City": city, "State": state, "Country": country, "Postal Code": None}
 
