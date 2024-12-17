@@ -47,28 +47,28 @@ if not url_data or not url_data_clean or not folder_id:
     raise ValueError("One or more required environment variables are not set (Url_Data, Url_DataClean, var_FolderID).")
 
 # Function to parse location
-# Función flexible para analizar ubicaciones sin librerías
 def parse_location(location):
     if pd.isna(location) or location.strip() == "":
-        return {"City": "Unknown", "State": "Unknown", "Country": "Unknown", "Postal Code": "Unknown"}
+        return {"City": "Unknown", "State": "Unknown", "Country": "Unknown", "Postal Code": None}
     try:
-        # Separar la ubicación por comas y espacios
+        # Dividir la ubicación por comas y limpiar espacios
         parts = [part.strip() for part in location.split(",")]
 
-        # Asignar valores según los elementos encontrados
-        city = parts[0] if len(parts) > 0 else "City Unknown"
-        state = parts[1] if len(parts) > 1 else "State Unknown"
-        country = parts[2] if len(parts) > 2 else "Country Unknown"
+        # Inicializar valores
+        city = parts[0] if len(parts) > 0 else "Unknown"
+        state = parts[1] if len(parts) > 1 else "Unknown"
+        country = parts[2] if len(parts) > 2 else "Unknown"
 
         return {
             "City": city,
             "State": state,
             "Country": country,
-            "Postal Code": "Postal Unknown"  # Sin información del código postal
+            "Postal Code": None  # Código postal no disponible en la información de entrada
         }
     except Exception as e:
         print(f"Error parsing location '{location}': {e}")
-        return {"City": "Error", "State": "Error", "Country": "Error", "Postal Code": "Error"}
+        return {"City": "Error", "State": "Error", "Country": "Error", "Postal Code": None}
+
 
 
 # Function to process data
