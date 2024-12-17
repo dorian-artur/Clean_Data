@@ -47,32 +47,29 @@ if not url_data or not url_data_clean or not folder_id:
     raise ValueError("One or more required environment variables are not set (Url_Data, Url_DataClean, var_FolderID).")
 
 # Function to parse location
+# Función flexible para analizar ubicaciones sin librerías
 def parse_location(location):
     if pd.isna(location) or location.strip() == "":
         return {"City": "Unknown", "State": "Unknown", "Country": "Unknown", "Postal Code": "Unknown"}
-
     try:
-        # Expresiones regulares para extraer ciudad, estado y país
-        city_pattern = r"([A-Za-z\s]+),\s*([A-Za-z\s]+),\s*([A-Za-z\s]+)"
-        postal_code_pattern = r"\b\d{4,6}\b"
+        # Separar la ubicación por comas y espacios
+        parts = [part.strip() for part in location.split(",")]
 
-        city_match = re.search(city_pattern, location)
-        postal_match = re.search(postal_code_pattern, location)
-
-        city = city_match.group(1).strip() if city_match else "City Unknown"
-        state = city_match.group(2).strip() if city_match else "State Unknown"
-        country = city_match.group(3).strip() if city_match else "Country Unknown"
-        postal_code = postal_match.group(0) if postal_match else "Postal Unknown"
+        # Asignar valores según los elementos encontrados
+        city = parts[0] if len(parts) > 0 else "City Unknown"
+        state = parts[1] if len(parts) > 1 else "State Unknown"
+        country = parts[2] if len(parts) > 2 else "Country Unknown"
 
         return {
             "City": city,
             "State": state,
             "Country": country,
-            "Postal Code": postal_code
+            "Postal Code": "Postal Unknown"  # Sin información del código postal
         }
     except Exception as e:
         print(f"Error parsing location '{location}': {e}")
         return {"City": "Error", "State": "Error", "Country": "Error", "Postal Code": "Error"}
+
 
 # Function to process data
 def process_data():
