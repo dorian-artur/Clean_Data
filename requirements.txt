@@ -25,3 +25,7 @@ google-api-python-client
 
 # Dependencias para la geolocalización
 geopy==2.3.0
+
+
+# Dependencia para manejo de zonas horarias
+pytz>=2024.1
