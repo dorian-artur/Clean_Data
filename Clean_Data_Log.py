@@ -11,8 +11,9 @@ import pytz
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from geopy.geocoders import Nominatim
-from geopy.exc import GeocoderTimedOut
+from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 import os
+import time
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -21,7 +22,7 @@ app = Flask(__name__)
 DetectorFactory.seed = 0
 
 # Initialize the geolocator
-geolocator = Nominatim(user_agent="location_parser")
+geolocator = Nominatim(user_agent="location_parser", timeout=5)
 
 # Configure authentication with Google Sheets and Drive
 scope = [
@@ -46,42 +47,50 @@ folder_id = os.getenv('var_FolderID')
 if not url_data or not url_data_clean or not folder_id:
     raise ValueError("One or more required environment variables are not set (Url_Data, Url_DataClean, var_FolderID).")
 
-# Function to parse location
+# Function to parse location with retry mechanism
 def parse_location(location):
     if pd.isna(location) or location.strip() == "":
         return {"City": "Unknown", "State": "Unknown", "Country": "Unknown", "Postal Code": None}
-    try:
-        # Consultar la ubicación usando Nominatim
-        geo_location = geolocator.geocode(location, timeout=10)
-        if geo_location:
-            # Extraer componentes detallados de la ubicación
-            address = geo_location.raw.get('address', {})
-            
-            city = (
-                address.get('city') or
-                address.get('town') or
-                address.get('village') or
-                address.get('hamlet') or
-                "Unknown"
-            )
-            state = address.get('state', "Unknown")
-            country = address.get('country', "Unknown")
-            postal_code = address.get('postcode', None)
 
-            return {
-                "City": city,
-                "State": state,
-                "Country": country,
-                "Postal Code": postal_code
-            }
-    except GeocoderTimedOut:
-        print(f"Geocoder timed out for location: '{location}'")
-    except Exception as e:
-        print(f"Error parsing location '{location}': {e}")
+    attempt = 0
+    max_attempts = 3  # Número máximo de reintentos
+    while attempt < max_attempts:
+        try:
+            # Consultar la ubicación usando Nominatim
+            geo_location = geolocator.geocode(location, timeout=10)
+            if geo_location:
+                address = geo_location.raw.get('address', {})
+                
+                city = (
+                    address.get('city') or
+                    address.get('town') or
+                    address.get('village') or
+                    address.get('hamlet') or
+                    "Unknown"
+                )
+                state = address.get('state', "Unknown")
+                country = address.get('country', "Unknown")
+                postal_code = address.get('postcode', None)
 
-    # Valores predeterminados en caso de error
+                return {
+                    "City": city,
+                    "State": state,
+                    "Country": country,
+                    "Postal Code": postal_code
+                }
+            else:
+                return {"City": "Unknown", "State": "Unknown", "Country": "Unknown", "Postal Code": None}
+
+        except (GeocoderTimedOut, GeocoderServiceError):
+            print(f"Attempt {attempt + 1}: Timeout or service error for location '{location}'. Retrying...")
+            attempt += 1
+            time.sleep(2)  # Esperar 2 segundos antes de reintentar
+        except Exception as e:
+            print(f"Error parsing location '{location}': {e}")
+            break
+
+    # Valores predeterminados si no se pudo obtener información
     return {"City": "Unknown", "State": "Unknown", "Country": "Unknown", "Postal Code": None}
-
 
 
 # Function to process data
